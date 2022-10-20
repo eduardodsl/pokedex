@@ -1,0 +1,121 @@
+:root{
+    --color-grass: #5dba56;
+    --color-fire: #F9A44C;
+    --color-water: #529BDD;
+    --color-poison: #b863d0;
+    --color-bug: #90bb2b;
+    --color-flying: #9eb8e8;
+    --color-normal: #9B9E9B;
+    --color-electric: #eed74c;
+    --color-ice: #72cabb;
+    --color-fighting: #d0415d;
+    --color-psychic: #f98480;
+    --color-rock: #cabc8a;
+    --color-ghost: #5e6cba;
+    --color-dark: #57555f;
+    --color-dragon: #0a68c7;
+    --color-steel: #5695a3;
+    --color-fairy: #ee91e6;
+    --color-ground: #d37748;
+}
+
+body{
+    padding: 0;
+    margin: 0;
+    font-size: 100%;
+}
+
+ul {
+    padding: 0;
+    margin: 0;
+}
+
+li {
+    padding: 0;
+    margin: 0;
+    list-style-type: none;
+}
+
+/*
+    TYPE COLORS
+*/
+
+.bg-grass{
+    background-color: var(--color-grass); 
+}
+
+.bg-fire{
+    background-color: var(--color-fire);
+}
+
+.bg-water{
+    background-color: var(--color-water);
+}
+
+.bg-poison{
+    background-color: var(--color-poison);
+}
+
+.bg-bug{
+    background-color: var(--color-bug);
+}
+
+.bg-flying{
+    background-color: var(--color-flying);
+}
+
+.bg-normal{
+    background-color: var(--color-normal);
+}
+
+.bg-electric{
+    background-color: var(--color-electric);
+}
+
+.bg-ice{
+    background-color: var(--color-ice);
+}
+
+.bg-fighting{
+    background-color: var(--color-fighting);
+}
+
+.bg-psychic{
+    background-color: var(--color-psychic);
+}
+
+.bg-rock{
+    background-color: var(--color-rock);
+}
+
+.bg-ghost{
+    background-color: var(--color-ghost);
+}
+
+.bg-dark{
+    background-color: var(--color-dark);
+}
+
+.bg-dragon{
+    background-color: var(--color-dragon);
+}
+
+.bg-steel{
+    background-color: var(--color-steel);
+}
+
+.bg-fairy{
+    background-color: var(--color-fairy);
+}
+
+.bg-ground{
+    background-color: var(--color-ground);
+}
+
+.type-tag{
+    filter: brightness(1.3);
+}
+
+.pokemon-item h2{
+    text-transform: capitalize;
+}
