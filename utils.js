@@ -29,6 +29,11 @@ class BaseDataObj {
         if(typeof data !== "object") throw TypeError("[data] is not a valid object!");
         this.#dataObj = data;
     }
+
+    /**
+     * Optional method to retrieve the json response used to build the derived objects
+     * @returns {any}
+     */
     getDataObj(){
         return this.#dataObj;
     }
@@ -36,19 +41,30 @@ class BaseDataObj {
 
 /**
  * A single pokemon with name, for more details it needs to have a [PokemonDetail] loaded
+ * @reference https://pokeapi.co/docs/v2#pokemon
+ * 
+ * usage:
+ * ```javascript
+ * // with an json object:
+ * const pokemon = new Pokemon(jsonObject);
+ * // it also can be created without an json object, if you are sure about the data being
+ * // present on the API:
+ * const pokemon = Pokemon.make(name);
+ * // adding details
+ * pokemon.setDetails(details);
+ * ```
  */
 class Pokemon extends BaseDataObj {
 
     #name;
     #url;
     #details;
-    #hasDetails;
 
     constructor(data){
         super(data);
         this.#name = data.name;
         this.#url = data.url;
-        this.#hasDetails = false;
+        this.#details = null;
     }
 
     getName(){
@@ -60,17 +76,21 @@ class Pokemon extends BaseDataObj {
     }
 
     setDetails(details){
+        if(!(details instanceof PokemonDetails)) throw TypeError("param [details] is not of type PokemonDetails!");
         if(details.getName() !== this.#name) throw Error(`[${details.name}] and [${this.#name}] are not the same pokemon!`);
         this.#details = details;
-        this.#hasDetails = true;
     }
     
     getDetails(){
-        if(this.#hasDetails){
+        if(this.hasDetails()){
             return this.#details;
         }else{
             throw new Error(`pokemon [${this.#name}] has no details loaded!`);
         }
+    }
+
+    hasDetails(){
+        return this.details !== null;
     }
 
     getId(){
@@ -81,22 +101,67 @@ class Pokemon extends BaseDataObj {
         return this.getDetails().getWeight();
     }
 
+    getFrontSprite(){
+        return this.getDetails().getFrontSprite();
+    }
+
+    getBackSprite(){
+        return this.getDetails().getBackSprite();
+    }
+
+    getTypes(){
+        return this.getDetails().getTypes();
+    }
+
+    getId(){
+        return this.getDetails().getId();
+    }
+
+    getOrder(){
+        return this.getDetails().getOrder();
+    }
+
+    /**
+     * makes a new pokemon without the json object
+     * @param {string} name - id or name of the pokemon
+     * @param {PokemonDetails} details - pokemon details
+     * @returns {Pokemon}
+     */
+    static make(name, details = null){
+        const url = "https://pokeapi.co/api/v2/pokemon/"+name;
+        const pokemon = new Pokemon({ name, url });
+        if(details){
+            pokemon.setDetails(details);
+        }
+        return pokemon;
+    }
+
 }
 
 /**
- * Pokemon details
+ * Pokemon details, it contains the equivalent data to a pokemon loaded with the id/name parameter from the API
+ * @reference https://pokeapi.co/docs/v2#pokemon
  */
 class PokemonDetails extends BaseDataObj {
     
     #name;
     #weight;
     #id;
+    #frontSprite;
+    #backSprite;
+    #types;
+    #order;
 
     constructor(data){
         super(data);
         this.#id = data.id;
         this.#name = data.name;
         this.#weight = data.weight;
+        this.#frontSprite = data.sprites.front_default;
+        this.#backSprite = data.sprites.back_default;
+        this.#types = data.types.map( type => type.type.name);
+        this.#order = data.order;
+        this.#id = data.id;
     }
 
     getId(){
@@ -111,10 +176,30 @@ class PokemonDetails extends BaseDataObj {
         return this.#weight;
     }
 
+    getFrontSprite(){
+        return this.#frontSprite;
+    }
+
+    getBackSprite(){
+        return this.#backSprite;
+    }
+
+    getTypes(){
+        return this.#types;
+    }
+
+    getOrder(){
+        return this.#order;
+    }
+
+    getId(){
+        return this.#id;
+    }
+
 }
 
 /**
- * Class builder, if data is an array, it will return the objects constructed inside an array
+ * Automatically builds [className], if [data] is an array, it will return the objects constructed inside an array
  * @param {any} className - an valid class to wrap the data
  * @param {any} data - json data used in the given class constructor
  * @returns {any|Array<any>}
