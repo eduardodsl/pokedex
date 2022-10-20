@@ -7,10 +7,19 @@ class PokemonService {
 
     #req;
     #loadedPokemons;
+    #selectedPokemon;
 
     constructor(){
         this.#req = new Requester();
         this.#loadedPokemons = {};
+    }
+
+    selectPokemon(id){
+        this.#selectedPokemon = id;
+    }
+
+    getSelectedPokemon(){
+        return this.#loadedPokemons[this.#selectedPokemon];
     }
 
     /**
@@ -32,12 +41,14 @@ class PokemonService {
         try {
             const pokemonData = await this.#req.get(url+"?"+urlData.toString());
             const pokemons = mapper(Pokemon, pokemonData.results);
+            let promises = [];
             for(let i = 0; i < pokemons.length; i++){
                 if(!this.#loadedPokemons[pokemons[i].getName()]){
                     this.#loadedPokemons[pokemons[i].getName()] = pokemons[i];
-                    if(withDetails) this.getPokemonDetails(pokemons[i]);
+                    if(withDetails) promises.push(this.getPokemonDetails(pokemons[i]));
                 }
             }
+            await Promise.all(promises);
             return this.getLoadedPokemons();
         }catch(e){
             console.error(e);
