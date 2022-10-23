@@ -15,12 +15,16 @@ class PokemonService {
     }
 
     /**
-     * Marks and selects the 
-     * @param {Pokemon} id - the pokemon id
+     * Selects an loaded pokemon by its [id]
+     * @param {string} id - the pokemon id
+     * @returns {Pokemon}
      */
     selectPokemon(id){
-        this.#selectedPokemon = id;
-        return this.#selectedPokemon;
+        if(this.pokemonExists(id)){
+            this.#selectedPokemon = id;
+            return this.#loadedPokemons[this.#selectedPokemon];
+        }
+        throw new Error(`Pokemon of id [${id}] wasn't previously loaded!`);
     }
 
     /**
@@ -41,6 +45,31 @@ class PokemonService {
     }
 
     /**
+     * Fetches a single pokemon by [id], when checking [withDetails] it will throw an exception if the pokemon doesn't
+     * exist on the api
+     * @param {string} id
+     * @returns {Promise<Pokemon>} 
+     */
+    async getPokemon(id, withDetails = true, reload = false){
+
+        if(!this.pokemonExists(id) || reload){
+            const pokemon = Pokemon.make(id);
+            this.#loadedPokemons[pokemon.getName()] = pokemon;
+                if(withDetails){
+                try {
+                    return this.getPokemonDetails(pokemon);
+                } catch (e){
+                    throw e;
+                }
+            }
+            return pokemon;
+        }
+
+        return this.#loadedPokemons[id];
+
+    }
+
+    /**
      * Fetches all pokemons
      * 
      * Paramters reference: https://pokeapi.co/docs/v2#pokemon
@@ -58,14 +87,9 @@ class PokemonService {
         }
         try {
             const pokemonData = await this.#req.get(url+"?"+urlData.toString());
-            const pokemons = mapper(Pokemon, pokemonData.results);
             let promises = [];
-            for(let i = 0; i < pokemons.length; i++){
-                const pokemon = pokemons[i];
-                if(!this.pokemonExists(pokemon.getName())){
-                    this.#loadedPokemons[pokemon.getName()] = pokemon;
-                    if(withDetails) promises.push(this.getPokemonDetails(pokemon));
-                }
+            for(let i = 0; i < pokemonData.results.length; i++){
+                promises.push( this.getPokemon( pokemonData.results[i].name ), withDetails );
             }
             await Promise.all(promises);
             return this.getLoadedPokemons();
@@ -85,7 +109,7 @@ class PokemonService {
     /**
      * Fetches details about a pokemon
      * @param {Pokemon} pokemon - an valid pokemon
-     * @returns {any|null}
+     * @returns {Promise<Pokemon>}
      */
     async getPokemonDetails(pokemon){
         if(!(pokemon instanceof Pokemon)) throw new TypeError("param [pokemon] is not of type Pokemon!");
