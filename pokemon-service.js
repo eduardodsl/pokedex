@@ -46,7 +46,7 @@ class PokemonService {
      * Paramters reference: https://pokeapi.co/docs/v2#pokemon
      * @param {string} id - fetches an specific pokemon by name, in this case, it will return only one pokemon inside an array
      * @param {object} params - defines search params
-     * @returns {any|null}
+     * @returns {any}
      */
     async getPokemons(params = null, withDetails = true){
         let url = 'https://pokeapi.co/api/v2/pokemon/';
@@ -74,6 +74,10 @@ class PokemonService {
         }
     }
 
+    /**
+     * Returns object with all loaded pokemons
+     * @returns {any}
+     */
     getLoadedPokemons(){
         return this.#loadedPokemons;
     }
