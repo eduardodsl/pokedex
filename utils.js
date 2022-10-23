@@ -3,6 +3,9 @@
  * @author Eduardo Augusto da Silva Leite <eduardodsl@gmail.com>
  */
 
+/**
+ * Class that makes basic requests
+ */
 class Requester {
 
     async get(url){
@@ -21,10 +24,13 @@ class Requester {
 }
 
 /**
- * Basis for all objects extracted from the API, it contains the extracted data
+ * Basis for all objects extracted from the API
  */
 class BaseDataObj {
+
+    // stores the object extracted from the api
     #dataObj;
+
     constructor(data){
         if(typeof data !== "object") throw TypeError("[data] is not a valid object!");
         this.#dataObj = data;
