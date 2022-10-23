@@ -14,12 +14,30 @@ class PokemonService {
         this.#loadedPokemons = {};
     }
 
+    /**
+     * Marks and selects the 
+     * @param {Pokemon} id - the pokemon id
+     */
     selectPokemon(id){
         this.#selectedPokemon = id;
+        return this.#selectedPokemon;
     }
 
-    getSelectedPokemon(){
+    /**
+     * Returns the pokmon marked as selected
+     * @returns {Pokemon}
+     */
+    getSelectedPokemon(){   
         return this.#loadedPokemons[this.#selectedPokemon];
+    }
+
+    /**
+     * Checks if pokemon id exists in the loaded pokemon list
+     * @param {string} id - the pokemon id
+     * @returns {boolean}
+     */
+    pokemonExists(id){
+        return this.#loadedPokemons[id] !== undefined;
     }
 
     /**
@@ -43,16 +61,16 @@ class PokemonService {
             const pokemons = mapper(Pokemon, pokemonData.results);
             let promises = [];
             for(let i = 0; i < pokemons.length; i++){
-                if(!this.#loadedPokemons[pokemons[i].getName()]){
-                    this.#loadedPokemons[pokemons[i].getName()] = pokemons[i];
-                    if(withDetails) promises.push(this.getPokemonDetails(pokemons[i]));
+                const pokemon = pokemons[i];
+                if(!this.pokemonExists(pokemon.getName())){
+                    this.#loadedPokemons[pokemon.getName()] = pokemon;
+                    if(withDetails) promises.push(this.getPokemonDetails(pokemon));
                 }
             }
             await Promise.all(promises);
             return this.getLoadedPokemons();
         }catch(e){
-            console.error(e);
-            return null;
+            throw e;
         }
     }
 
@@ -71,12 +89,15 @@ class PokemonService {
         try {
             const pokemonData = await this.#req.get(url);
             const details = mapper(PokemonDetails, pokemonData);
+            
+            if(!this.pokemonExists(pokemon.getName()))
+                this.#loadedPokemons[pokemon.getName()] = pokemon;
+            
             const currentPokemon = this.#loadedPokemons[pokemon.getName()];
             currentPokemon.setDetails(details);
             return currentPokemon;
         }catch(e){
-            console.error(e);
-            return null;
+            throw e;
         }
     }
 
