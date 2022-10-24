@@ -23,6 +23,31 @@ class Requester {
 
 }
 
+class ScrollStatus {
+
+    el;
+    scrollTop;
+    scrollHeight;
+    scrollBarHeight;
+    clientHeight;;
+    offsetHeight;
+    innerHeight;
+
+    constructor(el){
+        this.el = el;
+        this.scrollTop = this.el.scrollTop;
+        this.scrollHeight = this.el.scrollHeight;
+        this.clientHeight = this.el.clientHeight;
+        this.offsetHeight = this.el.offsetHeight;
+        this.scrollBarHeight = this.el.scrollHeight - this.scrollTop;
+    }
+
+    isBottom(){
+        return this.scrollBarHeight <= this.clientHeight+3;
+    }
+
+}
+
 /**
  * Basis for all objects extracted from the API
  */
@@ -91,12 +116,12 @@ class Pokemon extends BaseDataObj {
         if(this.hasDetails()){
             return this.#details;
         }else{
-            throw new Error(`pokemon [${this.#name}] has no details loaded!`);
+            throw new PokemonDetailsError(`pokemon [${this.#name}] has no details loaded!`);
         }
     }
 
     hasDetails(){
-        return this.details !== null;
+        return this.#details !== null;
     }
 
     getId(){
@@ -116,6 +141,7 @@ class Pokemon extends BaseDataObj {
     }
 
     getTypes(){
+        console.log(this.getName());
         return this.getDetails().getTypes();
     }
 
@@ -204,20 +230,9 @@ class PokemonDetails extends BaseDataObj {
 
 }
 
-/**
- * Automatically builds [className], if [data] is an array, it will return the objects constructed inside an array
- * @param {any} className - an valid class to wrap the data
- * @param {any} data - json data used in the given class constructor
- * @returns {any|Array<any>}
- */
-function mapper(className, data){
-    if(Array.isArray(data)){
-        let ret = [];
-        for(let i = 0; i < data.length; i++){
-            ret.push(new className(data[i]));
-        }
-        return ret;
-    }else{
-        return new className(data);
+class PokemonDetailsError extends Error{
+    constructor(message){
+        super(message);
+        this.name = this.constructor.name;
     }
 }
