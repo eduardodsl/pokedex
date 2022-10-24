@@ -13,10 +13,10 @@ class BaseTemplate {
     mount(query){
         this.el = document.querySelector(query);
         this.update();
-        this.mountEvent(this.data);
     }
     update(){
         this.el.innerHTML = this.render();
+        this.mountEvent(this.data);
     }
     mountEvent() { return null; }
     render() { return ""; }
@@ -35,7 +35,6 @@ class PokemonListTemplate extends BaseTemplate {
             template += pokemonItem.render();
         }
         template += "</ul>";
-
         return template;
     }
 
@@ -45,17 +44,18 @@ class PokemonItemTemplate extends BaseTemplate {
     
     render(){
         const pokemon = this.data.pokemon;
-        const details = {
-            types: pokemon.getTypes(),
-            image: pokemon.getFrontSprite(),
-            id: pokemon.getId(),
-        };
-        let template = `<li id="pokemon-${pokemon.getName()}" class="pokemon-item bg-${details.types[0]}" data-pkmid="${pokemon.getName()}">`;
-        template += "<h2>"+pokemon.getName()+"</h2>";
-        template += "<h3>#"+details.id+"</h3>";
-        template += "<img src="+details.image+">";
+        
+        const name = pokemon.getName();
+        const types = pokemon.getTypes();
+        const image = pokemon.getFrontSprite();
+        const id = pokemon.getId();
+
+        let template = `<li id="pokemon-${name}" class="pokemon-item bg-${types[0]}" data-pkmid="${name}">`;
+        template += "<h2>"+name+"</h2>";
+        template += "<h3>#"+id+"</h3>";
+        template += "<img src="+image+">";
         template += "<ul class='types'>";
-        details.types.forEach( type => template += `<li class="type-tag bg-${type}">${type}</li>` );
+        types.forEach( type => template += `<li class="type-tag bg-${type}">${type}</li>` );
         template += "</ul>";
         template += `</li>`;
         return template;
