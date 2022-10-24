@@ -8,10 +8,20 @@ class PokemonService {
     #req;
     #loadedPokemons;
     #selectedPokemon;
+    #limit;
 
     constructor(){
         this.#req = new Requester();
+        this.#limit = false;
         this.#loadedPokemons = {};
+    }
+
+    /**
+     * All possible pokemons are loaded
+     * @returns {boolean}
+     */
+    atLimit(){
+        return this.#limit;
     }
 
     /**
@@ -55,7 +65,7 @@ class PokemonService {
         if(!this.pokemonExists(id) || reload){
             const pokemon = Pokemon.make(id);
             this.#loadedPokemons[pokemon.getName()] = pokemon;
-                if(withDetails){
+            if(withDetails){
                 try {
                     return this.getPokemonDetails(pokemon);
                 } catch (e){
@@ -87,6 +97,11 @@ class PokemonService {
         }
         try {
             const pokemonData = await this.#req.get(url+"?"+urlData.toString());
+            if(pokemonData.next === null){
+                this.#limit = true;
+                console.info(`all pokemons are loaded`);
+                return;
+            }
             let promises = [];
             for(let i = 0; i < pokemonData.results.length; i++){
                 promises.push( this.getPokemon( pokemonData.results[i].name ), withDetails );
@@ -116,7 +131,7 @@ class PokemonService {
         let url = 'https://pokeapi.co/api/v2/pokemon/'+pokemon.getName();
         try {
             const pokemonData = await this.#req.get(url);
-            const details = mapper(PokemonDetails, pokemonData);
+            const details = new PokemonDetails(pokemonData);
             
             if(!this.pokemonExists(pokemon.getName()))
                 this.#loadedPokemons[pokemon.getName()] = pokemon;
@@ -125,7 +140,7 @@ class PokemonService {
             currentPokemon.setDetails(details);
             return currentPokemon;
         }catch(e){
-            throw e;
+            throw new PokemonDetailsError(`unable to find details for pokemon [${pokemon.getName()}]`);
         }
     }
 
