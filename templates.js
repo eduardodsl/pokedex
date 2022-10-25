@@ -10,10 +10,17 @@ class BaseTemplate {
     constructor(data){
         this.data = data || {};
     }
+    /**
+     * Sets the template to render its contents in the defined [query] selector
+     * @param {string} query - query selector as in `document.querySelector()`
+     */
     mount(query){
         this.el = document.querySelector(query);
         this.update();
     }
+    /**
+     * Renders the page and applies its event listeners
+     */
     update(){
         this.el.innerHTML = this.render();
         this.mountEvent(this.data);
@@ -43,22 +50,33 @@ class PokemonListTemplate extends BaseTemplate {
 class PokemonItemTemplate extends BaseTemplate {
     
     render(){
-        const pokemon = this.data.pokemon;
         
+        const pokemon = this.data?.pokemon;
+        let template = "a pokemon is required to load this template!";
+        
+        if(!pokemon) return template;
+
         const name = pokemon.getName();
         const types = pokemon.getTypes();
-        const image = pokemon.getFrontSprite();
+        const frontImage = pokemon.getFrontSprite();
         const id = pokemon.getId();
 
-        let template = `<li id="pokemon-${name}" class="pokemon-item bg-${types[0]}" data-pkmid="${name}">`;
-        template += "<h2>"+name+"</h2>";
-        template += "<h3>#"+id+"</h3>";
-        template += "<img src="+image+">";
+        template = `<li id="pokemon-${name}" class="pokemon-item" data-pkmid="${name}">`;
+        template += `<div class="content">`;
+        template += `<div class="image"><img src="${frontImage}" alt="front image of ${name}"></div>`;
+        template += `<div class="title">`
+        template += `<h2>${name}<span class="id">#${id}</span></h2>`;
+        template += `</div>`;
+        template += "<div class='details'>";
         template += "<ul class='types'>";
         types.forEach( type => template += `<li class="type-tag bg-${type}">${type}</li>` );
         template += "</ul>";
+        template += "</div>";
+        template += `</div>`;
         template += `</li>`;
+        
         return template;
+
     }
 
 }
@@ -66,15 +84,51 @@ class PokemonItemTemplate extends BaseTemplate {
 class PokemonDetailsTemplate extends BaseTemplate {
 
     render(){
-        let template = `<div id="details" class="${this.data.show ? 'show' : ''}">`;
-        if(this.data?.pokemon){
-            const pokemon = this.data.pokemon;
-            template += `<img src="${pokemon.getFrontSprite()}">`
-            template += "Weight: "+pokemon.getWeight();
-        }else{
-            template += "no pokemon selected";
-        }
-        template += "</div>";
+
+        const pokemon = this.data?.pokemon;
+
+        if(this.data?.show) this.el.classList.add("show");
+        else this.el.classList.remove("show");
+
+        let template = `<div>`;
+        
+        if(!pokemon) return template+"no pokemon selected</div>";
+        
+        const name = pokemon.getName();
+        const id = pokemon.getId();
+        const frontImage = pokemon.getFrontSprite();
+        const backImage = pokemon.getBackSprite();
+        const officialArtwork = pokemon.getOfficialArtwork();
+        const flavorText = pokemon.getFlavorText();
+
+        template += `
+        <button id="close-details">close</button>
+        <div class="bg"></div>
+        <div class="bg layer">camada 1</div>
+        <div class="bg layer">camada 2</div>
+        <div class="title">
+            <h3>${name}#${id}</h3>
+        </div>
+        <div class="artwork">
+            <img src="${officialArtwork}" alt="official artwork of ${name}">
+        </div>
+        <div class="sprites">
+            <div class="img-front">
+                <img src="${frontImage}" alt="front image of ${name}">
+                <div>Front</div>
+            </div>
+            <div class="img-back">
+                <img src="${backImage}" alt="back image of ${name}">
+                <div>Back</div>
+            </div>
+        </div>
+        <div class="desc">
+            ${flavorText}
+        </div>
+        `;
+        
+        template += `</div>`;
+
         return template;
     }
 
