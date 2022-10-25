@@ -9,8 +9,12 @@ To load only the data, at least `utils.js` and `pokemon-service.js` are required
 const pokemonService = new PokemonService();
 // get one pokemon...
 const raichu = await pokemonService.getPokemon('raichu');
-// ... or multiple pokemons
+// get one pokemon with additional data
+const starmie = await pokemonService.getPokemon('starmie', { species: true });
+// ... or multiple pokemons ...
 const pokemons = await pokemonService.getPokemons({ offset: 0, limit: 20 });
+// ... with additional data
+const pokemons = await pokemonService.getPokemons({ offset: 0, limit: 20 }, { species: true });
 ```
 
 All loaded data is cached on `PokemonService()`
