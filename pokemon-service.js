@@ -55,20 +55,28 @@ class PokemonService {
     }
 
     /**
-     * Fetches a single pokemon by [id], when checking [withDetails] it will throw an exception if the pokemon doesn't
+     * Fetches a single pokemon by [id], when checking [withData] it will throw an exception if the pokemon doesn't
      * exist on the api
      * @param {string} id
      * @returns {Promise<Pokemon>} 
      */
-    async getPokemon(id, withDetails = true, reload = false){
+    async getPokemon(id, withData = {}, reload = false){
+
+        const { details, species } = withData;
 
         if(!this.pokemonExists(id) || reload){
             const pokemon = Pokemon.make(id);
             this.#loadedPokemons[pokemon.getName()] = pokemon;
-            if(withDetails){
+            let promises = [];
+            
+            if(details) promises.push( this.getPokemonDetails(pokemon) );
+            if(species) promises.push( this.getPokemonSpecies(pokemon) );
+            
+            if(promises.length){
                 try {
-                    return this.getPokemonDetails(pokemon);
-                } catch (e){
+                    await Promise.all(promises);
+                    return pokemon;
+                }catch (e){
                     throw e;
                 }
             }
@@ -87,8 +95,11 @@ class PokemonService {
      * @param {object} params - defines search params
      * @returns {any}
      */
-    async getPokemons(params = null, withDetails = true){
+    async getPokemons(params = null, withData = {}){
         let url = 'https://pokeapi.co/api/v2/pokemon/';
+        
+        withData.details = true;
+        
         const urlData = new URLSearchParams();
         if(params){
             for(let key in params){
@@ -104,7 +115,7 @@ class PokemonService {
             }
             let promises = [];
             for(let i = 0; i < pokemonData.results.length; i++){
-                promises.push( this.getPokemon( pokemonData.results[i].name ), withDetails );
+                promises.push( this.getPokemon( pokemonData.results[i].name, withData ) );
             }
             await Promise.all(promises);
             return this.getLoadedPokemons();
@@ -142,6 +153,51 @@ class PokemonService {
         }catch(e){
             throw new PokemonDetailsError(`unable to find details for pokemon [${pokemon.getName()}]`);
         }
+    }
+
+    /**
+     * Fetches species data about a pokemon
+     * @param {Pokemon} pokemon - an valid pokemon
+     * @returns {Promise<Pokemon>}
+     */
+    async getPokemonSpecies(pokemon, force = false){
+        if(!(pokemon instanceof Pokemon)) throw new TypeError("param [pokemon] is not of type Pokemon!");
+
+        let url = 'https://pokeapi.co/api/v2/pokemon-species/';
+        let pokemonData = null;
+        
+        if(!pokemon.hasDetails() || force){
+            // tries to download the species data when being used in parallel with getPokemonDetails(), since the species id is
+            // only present in details, this method will attempt to guess the species name
+            try {
+                pokemonData = await this.#req.get(url+pokemon.getName());
+            } catch (e){
+                if(e instanceof RequestError){
+                    const filteredName = pokemon.getName().split("-")[0];
+                    try {
+                        pokemonData = await this.#req.get(url+filteredName);
+                    }catch(e){
+                        throw new PokemonSpeciesError(`unable to find species data for pokemon [${pokemon.getName()}] (forced)`);
+                    }
+                    console.warn(`[${pokemon.getName()}] failed to load, loading [${filteredName}]`);
+                }else{
+                    throw e;
+                }
+            }
+        }else{
+            const species = pokemon.getSpeciesName();
+            pokemonData = await this.#req.get(url+species);
+        }
+
+        const species = new PokemonSpecies(pokemonData);
+        
+        if(!this.pokemonExists(pokemon.getName()))
+            this.#loadedPokemons[pokemon.getName()] = pokemon;
+        
+        const currentPokemon = this.#loadedPokemons[pokemon.getName()];
+        currentPokemon.setSpecies(species);
+        return currentPokemon;
+        
     }
 
 }

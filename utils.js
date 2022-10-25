@@ -17,7 +17,7 @@ class Requester {
             const json = await data.json();
             return json;
         }catch(e){
-            throw e;
+            throw new RequestError(e.message);
         }
     }
 
@@ -90,6 +90,7 @@ class Pokemon extends BaseDataObj {
     #name;
     #url;
     #details;
+    #species;
 
     constructor(data){
         super(data);
@@ -111,6 +112,11 @@ class Pokemon extends BaseDataObj {
         if(details.getName() !== this.#name) throw Error(`[${details.name}] and [${this.#name}] are not the same pokemon!`);
         this.#details = details;
     }
+
+    setSpecies(species){
+        if(!(species instanceof PokemonSpecies)) throw TypeError("param [species] is not of type PokemonSpecies!");
+        this.#species = species;
+    }
     
     getDetails(){
         if(this.hasDetails()){
@@ -120,8 +126,20 @@ class Pokemon extends BaseDataObj {
         }
     }
 
+    getSpecies(){
+        if(this.hasSpecies()){
+            return this.#species;
+        }else{
+            throw new PokemonSpeciesError(`pokemon [${this.#name}] has no species loaded!`);
+        }
+    }
+
     hasDetails(){
         return this.#details !== null;
+    }
+
+    hasSpecies(){
+        return this.#species !== null;
     }
 
     getId(){
@@ -140,8 +158,11 @@ class Pokemon extends BaseDataObj {
         return this.getDetails().getBackSprite();
     }
 
+    getOfficialArtwork(){
+        return this.getDetails().getOfficialArtwork();
+    }
+
     getTypes(){
-        console.log(this.getName());
         return this.getDetails().getTypes();
     }
 
@@ -151,6 +172,14 @@ class Pokemon extends BaseDataObj {
 
     getOrder(){
         return this.getDetails().getOrder();
+    }
+
+    getSpeciesName(){
+        return this.getDetails().getSpeciesName();
+    }
+
+    getFlavorText(){
+        return this.getSpecies().getFlavorText();
     }
 
     /**
@@ -183,6 +212,8 @@ class PokemonDetails extends BaseDataObj {
     #backSprite;
     #types;
     #order;
+    #officialArtwork;
+    #speciesName;
 
     constructor(data){
         super(data);
@@ -194,6 +225,8 @@ class PokemonDetails extends BaseDataObj {
         this.#types = data.types.map( type => type.type.name);
         this.#order = data.order;
         this.#id = data.id;
+        this.#officialArtwork = data.sprites.other["official-artwork"].front_default;
+        this.#speciesName = data.species.name;
     }
 
     getId(){
@@ -228,9 +261,46 @@ class PokemonDetails extends BaseDataObj {
         return this.#id;
     }
 
+    getOfficialArtwork(){
+        return this.#officialArtwork;
+    }
+
+    getSpeciesName(){
+        return this.#speciesName;
+    }
+
+}
+
+class PokemonSpecies extends BaseDataObj{
+
+    #flavorText;
+
+    constructor(data){
+        super(data);
+        this.#flavorText = data.flavor_text_entries[0].flavor_text;
+    }
+
+    getFlavorText(){
+        return this.#flavorText;
+    }
+
 }
 
 class PokemonDetailsError extends Error{
+    constructor(message){
+        super(message);
+        this.name = this.constructor.name;
+    }
+}
+
+class PokemonSpeciesError extends Error{
+    constructor(message){
+        super(message);
+        this.name = this.constructor.name;
+    }
+}
+
+class RequestError extends Error{
     constructor(message){
         super(message);
         this.name = this.constructor.name;
