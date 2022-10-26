@@ -23,6 +23,9 @@ class Requester {
 
 }
 
+/**
+ * Basic class that serves as an wrapper for the scroll event
+ */
 class ScrollStatus {
 
     el;
@@ -42,6 +45,10 @@ class ScrollStatus {
         this.scrollBarHeight = this.el.scrollHeight - this.scrollTop;
     }
 
+    /**
+     * Checks if the element has scrolled to the bottom
+     * @returns {boolean}
+     */
     isBottom(){
         return this.scrollBarHeight <= this.clientHeight+3;
     }
@@ -71,7 +78,7 @@ class BaseDataObj {
 }
 
 /**
- * A single pokemon with name, for more details it needs to have a [PokemonDetail] loaded
+ * A single pokemon with name, for more details it needs to have a [PokemonDetail] or [PokemonSpecies] loaded
  * @reference https://pokeapi.co/docs/v2#pokemon
  * 
  * usage:
@@ -83,6 +90,8 @@ class BaseDataObj {
  * const pokemon = Pokemon.make(name);
  * // adding details
  * pokemon.setDetails(details);
+ * // adding species
+ * pokemon.setSpecies(species);
  * ```
  */
 class Pokemon extends BaseDataObj {
@@ -107,6 +116,16 @@ class Pokemon extends BaseDataObj {
         return this.#url;
     }
 
+    /**
+     * Sets either details or species data for the pokemon
+     * @param {PokemonDetails|PokemonSpecies} data - data to be loaded
+     */
+    setData(data){
+        if(data instanceof PokemonDetails) this.setDetails(data);
+        else if(data instanceof PokemonSpecies) this.setSpecies(data);
+        else throw new TypeError(`[data] is not allowed`);
+    }
+
     setDetails(details){
         if(!(details instanceof PokemonDetails)) throw TypeError("param [details] is not of type PokemonDetails!");
         if(details.getName() !== this.#name) throw Error(`[${details.name}] and [${this.#name}] are not the same pokemon!`);
@@ -119,19 +138,13 @@ class Pokemon extends BaseDataObj {
     }
     
     getDetails(){
-        if(this.hasDetails()){
-            return this.#details;
-        }else{
-            throw new PokemonDetailsError(`pokemon [${this.#name}] has no details loaded!`);
-        }
+        if(this.hasDetails()) return this.#details;
+        throw new PokemonDetailsError(`pokemon [${this.#name}] has no details loaded!`);
     }
 
     getSpecies(){
-        if(this.hasSpecies()){
-            return this.#species;
-        }else{
-            throw new PokemonSpeciesError(`pokemon [${this.#name}] has no species loaded!`);
-        }
+        if(this.hasSpecies()) return this.#species;
+        throw new PokemonSpeciesError(`pokemon [${this.#name}] has no species loaded!`);
     }
 
     hasDetails(){
@@ -271,6 +284,11 @@ class PokemonDetails extends BaseDataObj {
 
 }
 
+/**
+ * Contains basis data about multiple pokemons of the same species
+ * 
+ * @reference https://pokeapi.co/docs/v2#pokemon-species
+ */
 class PokemonSpecies extends BaseDataObj{
 
     #flavorText;

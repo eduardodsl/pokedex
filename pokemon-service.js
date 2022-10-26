@@ -9,11 +9,13 @@ class PokemonService {
     #loadedPokemons;
     #selectedPokemon;
     #limit;
+    #baseUrl;
 
     constructor(){
         this.#req = new Requester();
         this.#limit = false;
         this.#loadedPokemons = {};
+        this.#baseUrl = 'https://pokeapi.co/api/v2';
     }
 
     /**
@@ -46,7 +48,7 @@ class PokemonService {
     }
 
     /**
-     * Checks if pokemon id exists in the loaded pokemon list
+     * Checks if pokemon [id] exists in the loaded pokemon list
      * @param {string} id - the pokemon id
      * @returns {boolean}
      */
@@ -133,23 +135,39 @@ class PokemonService {
     }
 
     /**
+     * Requests pokemon data to the api and adds to the pokemon
+     * @param {BaseDataObj} modelClass - an allowed class to add to the pokemon
+     * @param {string} url - the API endpoint that contains the desired data
+     * @param {Pokemon} pokemon the pokemon that will receive the data
+     * @returns {Promise<Pokemon>}
+     */
+    async requestPokemonData(modelClass, url, pokemon){
+        if(!(pokemon instanceof Pokemon)) throw new TypeError("param [pokemon] is not of type Pokemon!");
+        if(!(pokemon instanceof BaseDataObj)) throw new TypeError("param [modelClass] is not an allowed data object!");
+        let pokemonData = null;
+        try {
+            pokemonData = await this.#req.get(url);
+        } catch(e){
+            throw e;
+        }
+        const details = new modelClass(pokemonData);
+        if(!this.pokemonExists(pokemon.getName()))
+            this.#loadedPokemons[pokemon.getName()] = pokemon;
+        const currentPokemon = this.#loadedPokemons[pokemon.getName()];
+        currentPokemon.setData(details);
+        return currentPokemon;
+    }
+
+    /**
      * Fetches details about a pokemon
      * @param {Pokemon} pokemon - an valid pokemon
      * @returns {Promise<Pokemon>}
      */
     async getPokemonDetails(pokemon){
         if(!(pokemon instanceof Pokemon)) throw new TypeError("param [pokemon] is not of type Pokemon!");
-        let url = 'https://pokeapi.co/api/v2/pokemon/'+pokemon.getName();
+        const url = `${this.#baseUrl}/pokemon/${pokemon.getName()}`;
         try {
-            const pokemonData = await this.#req.get(url);
-            const details = new PokemonDetails(pokemonData);
-            
-            if(!this.pokemonExists(pokemon.getName()))
-                this.#loadedPokemons[pokemon.getName()] = pokemon;
-            
-            const currentPokemon = this.#loadedPokemons[pokemon.getName()];
-            currentPokemon.setDetails(details);
-            return currentPokemon;
+            return await this.requestPokemonData(PokemonDetails, url, pokemon);
         }catch(e){
             throw new PokemonDetailsError(`unable to find details for pokemon [${pokemon.getName()}]`);
         }
@@ -160,44 +178,35 @@ class PokemonService {
      * @param {Pokemon} pokemon - an valid pokemon
      * @returns {Promise<Pokemon>}
      */
-    async getPokemonSpecies(pokemon, force = false){
+    async getPokemonSpecies(pokemon){
+        
         if(!(pokemon instanceof Pokemon)) throw new TypeError("param [pokemon] is not of type Pokemon!");
 
-        let url = 'https://pokeapi.co/api/v2/pokemon-species/';
-        let pokemonData = null;
-        
-        if(!pokemon.hasDetails() || force){
-            // tries to download the species data when being used in parallel with getPokemonDetails(), since the species id is
-            // only present in details, this method will attempt to guess the species name
-            try {
-                pokemonData = await this.#req.get(url+pokemon.getName());
-            } catch (e){
-                if(e instanceof RequestError){
-                    const filteredName = pokemon.getName().split("-")[0];
-                    try {
-                        pokemonData = await this.#req.get(url+filteredName);
-                    }catch(e){
-                        throw new PokemonSpeciesError(`unable to find species data for pokemon [${pokemon.getName()}] (forced)`);
-                    }
-                    console.warn(`[${pokemon.getName()}] failed to load, loading [${filteredName}]`);
-                }else{
-                    throw e;
+        let name = pokemon.getName(); // assuming the species id is the same as the pokemon name (most of the time it is)
+        if(pokemon.hasDetails()) name = pokemon.getSpeciesName(); // if there is details loaded, loads the actual species id
+
+        const url = `${this.#baseUrl}/pokemon-species/${name}`;
+        try {
+            // if [name] didn't came from details, there is a chance it might not find the species data and the request will fail
+            // with an 404 error
+            return await this.requestPokemonData(PokemonSpecies, url, pokemon);
+        }catch(e){
+            // tries to recover and filter the pokemon name to try again
+            // this method enables both getPokemonSpecies() and getPokemonDetails() to run in parallel
+            // since the species id might be in the details data that wasn't loaded yet
+            if(e instanceof RequestError){
+                const filteredName = name.split("-")[0];
+                const filteredUrl = `${this.#baseUrl}/pokemon-species/${name.split("-")[0]}`;
+                try {
+                    return await this.requestPokemonData(PokemonSpecies, filteredUrl, pokemon);
+                }catch(e){
+                    throw new PokemonSpeciesError(`unable to find species data for pokemon [${name}] (forced ${filteredName})`);
                 }
+            }else{
+                throw e;
             }
-        }else{
-            const species = pokemon.getSpeciesName();
-            pokemonData = await this.#req.get(url+species);
         }
 
-        const species = new PokemonSpecies(pokemonData);
-        
-        if(!this.pokemonExists(pokemon.getName()))
-            this.#loadedPokemons[pokemon.getName()] = pokemon;
-        
-        const currentPokemon = this.#loadedPokemons[pokemon.getName()];
-        currentPokemon.setSpecies(species);
-        return currentPokemon;
-        
     }
 
 }

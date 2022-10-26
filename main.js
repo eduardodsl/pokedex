@@ -9,6 +9,7 @@ class Main {
         this.pokemonService = new PokemonService();
         this.listTemplate = new PokemonListTemplate();
         this.detailsTemplate = new PokemonDetailsTemplate({ show: false });
+        this.errorTemplate = new ErrorTemplate();
         this.offset = 0;
         this.limit = 20;
         this.loading = false;
@@ -80,21 +81,16 @@ class Main {
      */
     async main(){
         
-        let items = null;
-
         try {
-            items = await this.pokemonService.getPokemons({ offset: this.offset, limit: this.limit });
+            const items = await this.pokemonService.getPokemons({ offset: this.offset, limit: this.limit });
+            this.listTemplate.data.items = items;
+            this.addEvents();
+            this.listTemplate.mount("#list");
+            this.detailsTemplate.mount("#details");
         }catch(e){
             console.error(e);
-        }finally {
-            if(items){
-                this.listTemplate.data.items = items;
-                this.addEvents();
-                this.listTemplate.mount("#list");
-                this.detailsTemplate.mount("#details");
-            }else{
-                console.info("it wasn't possible to load the pokemon data, please check your connection settings!");
-            }
+            this.errorTemplate.mount("#main");
+            console.info("it wasn't possible to load the pokemon data, please check your connection settings!");
         }
     }
 

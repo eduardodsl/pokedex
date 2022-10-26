@@ -61,19 +61,21 @@ class PokemonItemTemplate extends BaseTemplate {
         const frontImage = pokemon.getFrontSprite();
         const id = pokemon.getId();
 
-        template = `<li id="pokemon-${name}" class="pokemon-item" data-pkmid="${name}">`;
-        template += `<div class="content">`;
-        template += `<div class="image"><img src="${frontImage}" alt="front image of ${name}"></div>`;
-        template += `<div class="title">`
-        template += `<h2>${name}<span class="id">#${id}</span></h2>`;
-        template += `</div>`;
-        template += "<div class='details'>";
-        template += "<ul class='types'>";
-        types.forEach( type => template += `<li class="type-tag bg-${type}">${type}</li>` );
-        template += "</ul>";
-        template += "</div>";
-        template += `</div>`;
-        template += `</li>`;
+        template = `
+        <li id="pokemon-${name}" class="pokemon-item" data-pkmid="${name}">
+            <div class="content">
+                <div class="image"><img src="${frontImage}" alt="front image of ${name}"></div>
+                <div class="title">
+                    <h2>${name}<span class="id">#${id}</span></h2>
+                </div>
+                <div class='details'>
+                    <ul>`;
+                        types.forEach( type => template += `<li class="type-tag bg-${type}">${type}</li>` );
+                    template += `
+                    </ul>
+                </div>
+            </div>
+        </li>`;
         
         return template;
 
@@ -130,6 +132,14 @@ class PokemonDetailsTemplate extends BaseTemplate {
         template += `</div>`;
 
         return template;
+    }
+
+}
+
+class ErrorTemplate extends BaseTemplate {
+    
+    render(){
+        return `<div class="error">failure loading data, please check your connection or try again later</div>`;
     }
 
 }
