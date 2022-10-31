@@ -1,3 +1,4 @@
+"use strict";
 /**
  * Simple templating system to help structure the data on the html document
  * @author Eduardo Augusto da Silva Leite <eduardodsl@gmail.com>
@@ -69,10 +70,7 @@ class PokemonItemTemplate extends BaseTemplate {
                     <h2>${name}<span class="id">#${id}</span></h2>
                 </div>
                 <div class='details'>
-                    <ul>`;
-                        types.forEach( type => template += `<li class="type-tag bg-${type}">${type}</li>` );
-                    template += `
-                    </ul>
+                    ${ pokemonTypesPartial(types) }
                 </div>
             </div>
         </li>`;
@@ -91,42 +89,40 @@ class PokemonDetailsTemplate extends BaseTemplate {
 
         if(this.data?.show) this.el.classList.add("show");
         else this.el.classList.remove("show");
-
+        
         let template = `<div>`;
         
-        if(!pokemon) return template+"no pokemon selected</div>";
+        if(!pokemon) return template+"<div class='no-selected'>Select an Pokémon in the list</div></div>";
         
         const name = pokemon.getName();
         const id = pokemon.getId();
-        const frontImage = pokemon.getFrontSprite();
-        const backImage = pokemon.getBackSprite();
         const officialArtwork = pokemon.getOfficialArtwork();
         const flavorText = pokemon.getFlavorText();
+        const types = pokemon.hasDetails() ? pokemon.getTypes() : [];
+        const stats = pokemon.getStats();
+        const evolutionChain = pokemon.getEvolutionChain();
 
         template += `
-        <button id="close-details">close</button>
+        <button id="close-details">x</button>
         <div class="bg"></div>
-        <div class="bg layer">camada 1</div>
-        <div class="bg layer">camada 2</div>
-        <div class="title">
-            <h3>${name}#${id}</h3>
-        </div>
+        <div class="bg layer l0"></div>
+        <div class="bg layer l1"></div>
+        <div class="bg layer l2"></div>
         <div class="artwork">
-            <img src="${officialArtwork}" alt="official artwork of ${name}">
+            <img src="${ officialArtwork }" alt="official artwork of ${ name }">
         </div>
-        <div class="sprites">
-            <div class="img-front">
-                <img src="${frontImage}" alt="front image of ${name}">
-                <div>Front</div>
-            </div>
-            <div class="img-back">
-                <img src="${backImage}" alt="back image of ${name}">
-                <div>Back</div>
-            </div>
+        <div class="title">
+            <h3>
+                <span class="pokemon-name">${ name }</span>
+                <span class="pokemon-id">#${ id }</span>
+            </h3>
         </div>
         <div class="desc">
-            ${flavorText}
+            ${ flavorText }
         </div>
+        ${ pokemonTypesPartial(types) }
+        ${ pokemonStatsPartial(stats) }
+        ${ evolutionChain ? pokemonEvolutionPartial(evolutionChain) : '' }
         `;
         
         template += `</div>`;
@@ -134,6 +130,107 @@ class PokemonDetailsTemplate extends BaseTemplate {
         return template;
     }
 
+}
+
+const pokemonEvolutionPartial = (chain) => {
+
+    if(chain.isSingle()) return "";
+
+    let template = "";
+    let lastPhase = -1;
+
+    template += `<div class="pokemon-evolution">`;
+    chain.linkMap((evolution, phase, phaseIndex, totalIndex) => {
+        
+        // TODO: some pokemons have irregular evolution chains that are not yielding the correct pokemon data.
+        // needs to check their cases and bring an appropriate solution
+
+        const pokemon = evolution.getPokemon();
+
+        if(!pokemon) return; // it should always have a pokemon (quirk for irregular evolutions)
+
+        let frontSprite = "";
+        if(!pokemon.hasDetails()){ // it should always have details (quirk for irregular evolutions)
+            console.info(`pokémon [${pokemon.getName()}] had no details found, no pictures will be loaded.`);
+        }else{
+            frontSprite = pokemon.getFrontSprite();
+        }
+
+        const phaseNumber = phase+1;
+        if(lastPhase !== phase) template += `<ul class="evolution-chain phase-${phaseNumber}">`;
+        template += `<li class="evolution-phase phase-${phaseNumber}" data-phase="${phaseNumber}">
+            <div class="evolution-phase-pokemon">
+                <img src="${ frontSprite }">
+                ${ pokemon.getName() }
+            </div>
+        </li>`;
+        if(phaseIndex === (totalIndex - 1))
+            template += `</ul>`;
+        lastPhase = phase;
+
+    });
+    template += `</div>`;
+
+    return template;
+
+}
+
+const pokemonStatsPartial = (stats) => {
+
+    let total = 0;
+    for(const key in stats){
+        total += stats[key];
+    }
+
+    const maxAbility = 300; // the highest pokemon individual stats
+    const maxTotal = 1300; // the highest pokemon total stats
+
+    const showStatData = (type, stat, compare) => {
+        return `
+            <span class="stat-value">${stat}</span>
+            <span class="stat-proportion">
+                <span class="stat-proportion-wrapper">
+                    <span style="width: ${ Calc.percentOf(stat, compare) }%" class="stat-proportion-bar stat-bg-${type}"></span>
+                </span>
+            </span>`;
+    }
+
+    return `<div class="pokemon-stats">
+        <dl>
+            <dt>hp</dt><dd>${ showStatData('hp', stats.hp, maxAbility) }</dd>
+            <dt>attack</dt><dd>${ showStatData('attack', stats.attack, maxAbility) }</dd>
+            <dt>defense</dt><dd>${ showStatData('defense', stats.defense, maxAbility) }</dd>
+            <dt>s. attack</dt><dd>${ showStatData('sattack', stats["special-attack"], maxAbility)}</dd>
+            <dt>s. defense</dt><dd>${ showStatData('sdefense', stats["special-defense"], maxAbility) }</dd>
+            <dt>speed</dt><dd>${ showStatData('speed', stats.speed, maxAbility) }</dd>
+            <dt>total</dt><dd>${ showStatData('total', total, maxTotal) }</dd>
+        </dl>
+    </div>`;
+}
+
+const pokemonAbilitiesPartial = (abilities) => {
+
+    if(abilities.length){
+        return `<div class="pokemon-abilities">
+            <ul>
+                ${ abilities.map( ability => `<li>${ability}</li>` ).join('') }
+            </ul>
+        </div>`;
+    }
+
+    return '';
+
+}
+
+const pokemonTypesPartial = (types, hasColor = true) => {
+    
+    if(types.length){
+        return `<ul class="pokemon-types">
+            ${ types.map( type => `<li class="type-tag ${ (hasColor) ? `bg-${type}` : `` } ">${type}</li>` ).join("") }
+        </ul>`;
+    }
+
+    return '';
 }
 
 class ErrorTemplate extends BaseTemplate {
