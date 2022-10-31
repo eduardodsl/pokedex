@@ -1,3 +1,4 @@
+"use strict";
 /**
  * Utilities to help structure the app data
  * @author Eduardo Augusto da Silva Leite <eduardodsl@gmail.com>
@@ -9,9 +10,7 @@
 class Requester {
 
     async get(url){
-        if(!url){
-            throw new Error("url is required!");
-        }
+        if(!url) throw new Error("url is required!");
         try {
             const data = await fetch(url);
             const json = await data.json();
@@ -78,7 +77,9 @@ class BaseDataObj {
 }
 
 /**
- * A single pokemon with name, for more details it needs to have a [PokemonDetail] or [PokemonSpecies] loaded
+ * A single pokemon with name, for more details it needs to have a [PokemonDetail] or [PokemonSpecies] loaded. This
+ * class unifies and validates all data of an particular pokemon extracted from the api's json response
+ * 
  * @reference https://pokeapi.co/docs/v2#pokemon
  * 
  * usage:
@@ -100,6 +101,7 @@ class Pokemon extends BaseDataObj {
     #url;
     #details;
     #species;
+    #evolutionChain;
 
     constructor(data){
         super(data);
@@ -112,18 +114,31 @@ class Pokemon extends BaseDataObj {
         return this.#name;
     }
 
-    getUrl(){
+    getDetailsUrl(){
         return this.#url;
     }
 
     /**
      * Sets either details or species data for the pokemon
-     * @param {PokemonDetails|PokemonSpecies} data - data to be loaded
+     * @param {PokemonDetails|PokemonSpecies|PokemonEvolutionChain} data - data to be loaded
      */
     setData(data){
         if(data instanceof PokemonDetails) this.setDetails(data);
         else if(data instanceof PokemonSpecies) this.setSpecies(data);
+        else if(data instanceof PokemonEvolutionChain) this.setEvolutionChain(data);
         else throw new TypeError(`[data] is not allowed`);
+    }
+
+    /**
+     * Returns all contained details status
+     * @returns {any}
+     */
+    contains(){
+        return {
+            hasDetails: this.hasDetails(),
+            hasSpecies: this.hasSpecies(),
+            hasEvolutionChain: this.hasEvolutionChain(),
+        };
     }
 
     setDetails(details){
@@ -135,6 +150,11 @@ class Pokemon extends BaseDataObj {
     setSpecies(species){
         if(!(species instanceof PokemonSpecies)) throw TypeError("param [species] is not of type PokemonSpecies!");
         this.#species = species;
+    }
+
+    setEvolutionChain(evolutionChain){
+        if(!(evolutionChain instanceof PokemonEvolutionChain)) throw TypeError("param [evolutionChain] is not of type PokemonSpecies!");
+        this.#evolutionChain = evolutionChain;
     }
     
     getDetails(){
@@ -153,6 +173,10 @@ class Pokemon extends BaseDataObj {
 
     hasSpecies(){
         return this.#species !== null;
+    }
+
+    hasEvolutionChain(){
+        return this.#evolutionChain !== null;
     }
 
     getId(){
@@ -191,8 +215,28 @@ class Pokemon extends BaseDataObj {
         return this.getDetails().getSpeciesName();
     }
 
-    getFlavorText(){
-        return this.getSpecies().getFlavorText();
+    getAbilities(){
+        return this.getDetails().getAbilities();
+    }
+
+    getStats(){
+        return this.getDetails().getStats();
+    }
+
+    getStat(name){
+        return this.getDetails().getStat(name);
+    }
+
+    getFlavorText(language = 'en'){
+        return this.getSpecies().getFlavorText(language);
+    }
+
+    getEvolutionChain(){
+        return this.#evolutionChain;
+    }
+
+    getChain(){
+        return this.getEvolutionChain().getChain();
     }
 
     /**
@@ -214,6 +258,7 @@ class Pokemon extends BaseDataObj {
 
 /**
  * Pokemon details, it contains the equivalent data to a pokemon loaded with the id/name parameter from the API
+ * 
  * @reference https://pokeapi.co/docs/v2#pokemon
  */
 class PokemonDetails extends BaseDataObj {
@@ -227,6 +272,8 @@ class PokemonDetails extends BaseDataObj {
     #order;
     #officialArtwork;
     #speciesName;
+    #abilities;
+    #stats;
 
     constructor(data){
         super(data);
@@ -240,47 +287,38 @@ class PokemonDetails extends BaseDataObj {
         this.#id = data.id;
         this.#officialArtwork = data.sprites.other["official-artwork"].front_default;
         this.#speciesName = data.species.name;
+        this.#abilities = data.abilities.map( item => item.ability.name );
+        this.#stats = {};
+        data.stats.forEach( stat_data => {
+            this.#stats[stat_data.stat.name] = stat_data.base_stat;
+        });
     }
 
-    getId(){
-        return this.#id;
-    }
+    getId(){ return this.#id; }
 
-    getName(){
-        return this.#name;
-    }
+    getName(){ return this.#name; }
 
-    getWeight(){
-        return this.#weight;
-    }
+    getWeight(){ return this.#weight; }
 
-    getFrontSprite(){
-        return this.#frontSprite;
-    }
+    getFrontSprite(){ return this.#frontSprite; }
 
-    getBackSprite(){
-        return this.#backSprite;
-    }
+    getBackSprite(){ return this.#backSprite; }
 
-    getTypes(){
-        return this.#types;
-    }
+    getTypes(){ return this.#types; }
 
-    getOrder(){
-        return this.#order;
-    }
+    getOrder(){ return this.#order; }
 
-    getId(){
-        return this.#id;
-    }
+    getId(){ return this.#id; }
 
-    getOfficialArtwork(){
-        return this.#officialArtwork;
-    }
+    getOfficialArtwork(){ return this.#officialArtwork; }
 
-    getSpeciesName(){
-        return this.#speciesName;
-    }
+    getSpeciesName(){ return this.#speciesName; }
+
+    getAbilities() { return this.#abilities };
+
+    getStats() { return this.#stats };
+
+    getStat(name) { return this.#stats[name] ?? "" };
 
 }
 
@@ -292,14 +330,154 @@ class PokemonDetails extends BaseDataObj {
 class PokemonSpecies extends BaseDataObj{
 
     #flavorText;
+    #evolutionChainUrl;
 
     constructor(data){
         super(data);
-        this.#flavorText = data.flavor_text_entries[0].flavor_text;
+        this.#flavorText = data.flavor_text_entries;
+        this.#evolutionChainUrl = data.evolution_chain.url ?? "";
     }
 
-    getFlavorText(){
-        return this.#flavorText;
+    #filterText(text){
+        return text.replace('\u000c', " "); 
+    }
+
+    getEvolutionChainUrl(){
+        return this.#evolutionChainUrl;
+    }
+
+    getFlavorText(language = 'en', mustFind = false){
+        
+        for(let i = 0; i < this.#flavorText.length; i++){
+            if(this.#flavorText[i].language.name === language)
+                return this.#filterText(this.#flavorText[i].flavor_text);
+        }
+        if(mustFind) throw new PokemonSpeciesError(`flavor text for language [${language}] not found! `);
+        return "";
+
+    }
+
+}
+
+/**
+ * Groups evolution levels
+ */
+class PokemonEvolutionChain extends BaseDataObj{
+    
+    #chain;
+    #id;
+    #single;
+
+    constructor(data, single = false){
+        super(data);
+        // this.#evolvesTo = [];
+        this.#id = data.id;
+        this.#single = single;
+        this.#makeChain(data.chain);
+    }
+
+    /**
+     * Checks if is single evolution
+     * @returns {Boolean}
+     */
+    isSingle(){
+        return this.#single;
+    }
+
+    #makeChain(level, evolution = null){
+        
+        const pokemon = Pokemon.make(level.species.name);
+        let newEvolution = null;
+
+        if(level.evolves_to.length === 0 && evolution == null){
+            this.#single = true;
+        }
+
+        if(evolution){
+            newEvolution = new PokemonEvolution(pokemon);
+            evolution.setEvolvesTo(newEvolution);
+        }else{
+            evolution = new PokemonEvolution(pokemon);
+            this.#chain = evolution;
+        }
+
+        for(let i = 0; i < level.evolves_to.length; i++){
+            this.#makeChain(level.evolves_to[i], newEvolution ?? evolution);
+        }
+
+    }
+
+    /**
+     * Maps through all the evolution chain
+     * @param {Function} onEvolution - callback function to run when a evolution is found
+     */
+    linkMap(onEvolution){
+        this.#onLinkMap(this.#chain, 0, 0, 1, onEvolution);
+    }
+
+    #onLinkMap(evolution, level, phaseIndex, totalIndex, onEvolution){
+        onEvolution(evolution, level, phaseIndex, totalIndex);
+        level++;
+        const evolutions = evolution.getEvolvesTo();
+        for(let i = 0; i < evolutions.length; i++){
+            this.#onLinkMap(evolutions[i], level, i, evolution.getEvolvesTo().length, onEvolution);
+        }
+    }
+
+    getId(){
+        return this.#id;
+    }
+
+    getChain(){
+        return this.#chain;
+    }
+
+}
+
+/**
+ * Represents one pokemon evolution level
+ */
+class PokemonEvolution {
+
+    #pokemon;
+    #evolvesTo;
+
+    constructor(pokemon){
+        this.#pokemon = pokemon;
+        this.#evolvesTo = [];
+    }
+
+    setEvolvesTo(pokemon){
+        this.#evolvesTo.push(pokemon);
+    }
+
+    setPokemon(pokemon){
+        this.#pokemon = pokemon;
+    }
+
+    getPokemon(){
+        return this.#pokemon;
+    }
+
+    getEvolvesTo(){
+        return this.#evolvesTo;
+    }
+
+}
+
+/**
+ * Class that organizes simple calc functions
+ */
+class Calc {
+
+    /**
+     * Calculates how much percent is [value] from [compare]
+     * @param {Number} value - the value to be checked
+     * @param {Number} compare - the comparison value
+     * @returns {Number}
+     */
+    static percentOf(value, compare){
+        return (value / compare) * 100;
     }
 
 }
@@ -319,6 +497,13 @@ class PokemonSpeciesError extends Error{
 }
 
 class RequestError extends Error{
+    constructor(message){
+        super(message);
+        this.name = this.constructor.name;
+    }
+}
+
+class TemplateError extends Error{
     constructor(message){
         super(message);
         this.name = this.constructor.name;

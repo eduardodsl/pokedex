@@ -1,3 +1,4 @@
+"use strict";
 /**
  * Provides pokemon data
  * @author Eduardo Augusto da Silva Leite <eduardodsl@gmail.com>
@@ -20,7 +21,7 @@ class PokemonService {
 
     /**
      * All possible pokemons are loaded
-     * @returns {boolean}
+     * @returns {Boolean}
      */
     atLimit(){
         return this.#limit;
@@ -49,30 +50,38 @@ class PokemonService {
 
     /**
      * Checks if pokemon [id] exists in the loaded pokemon list
-     * @param {string} id - the pokemon id
-     * @returns {boolean}
+     * @param {String} id - the pokemon id
+     * @returns {Boolean}
      */
     pokemonExists(id){
         return this.#loadedPokemons[id] !== undefined;
     }
 
     /**
-     * Fetches a single pokemon by [id], when checking [withData] it will throw an exception if the pokemon doesn't
-     * exist on the api
-     * @param {string} id
+     * Fetches a single pokemon by [id]
+     * @param {String} id
+     * @param {Object} withData - params to instruct the service to load certain Pokémon properties
+     * @param {Boolean} withData.details - load data with pokemon details (images, stats)
+     * @param {Boolean} withData.species - load data with species data (evolution, description)
+     * @param {Boolean} withData.evolutionChain - load data with evolution chain (will set species to `true`)
+     * @param {Object} config - additional service configuration
+     * @param {Boolean} config.reload - force to reload the pokemon data despite already being saved
+     * @param {Boolean} config.save - defines if pokemon data should be saved on the service
      * @returns {Promise<Pokemon>} 
      */
-    async getPokemon(id, withData = {}, reload = false){
+    async getPokemon(id, withData = {}, config = {}){
 
-        const { details, species } = withData;
+        const { details = true, species, evolutionChain } = withData;
+        const { reload, save = true } = config;
 
         if(!this.pokemonExists(id) || reload){
             const pokemon = Pokemon.make(id);
-            this.#loadedPokemons[pokemon.getName()] = pokemon;
+            if(save) this.#loadedPokemons[pokemon.getName()] = pokemon;
             let promises = [];
             
+            if(details && id == "zygarde-50" || id == "zygarde") debugger;
             if(details) promises.push( this.getPokemonDetails(pokemon) );
-            if(species) promises.push( this.getPokemonSpecies(pokemon) );
+            if(species || evolutionChain) promises.push( this.getPokemonSpecies(pokemon, withData) );
             
             if(promises.length){
                 try {
@@ -93,9 +102,12 @@ class PokemonService {
      * Fetches all pokemons
      * 
      * Paramters reference: https://pokeapi.co/docs/v2#pokemon
-     * @param {string} id - fetches an specific pokemon by name, in this case, it will return only one pokemon inside an array
-     * @param {object} params - defines search params
-     * @returns {any}
+     * @param {Object} params - the attributes will respectively be send as query string parameters to the api
+     * @param {Object} withData - params to instruct the service to load certain Pokémon properties
+     * @param {Boolean} withData.details - load data with pokemon details (images, stats)
+     * @param {Boolean} withData.species - load data with species data (evolution, description)
+     * @param {Boolean} withData.evolutionChain - load data with evolution chain (will set species to `true`)
+     * @returns {Object}
      */
     async getPokemons(params = null, withData = {}){
         let url = 'https://pokeapi.co/api/v2/pokemon/';
@@ -128,7 +140,7 @@ class PokemonService {
 
     /**
      * Returns object with all loaded pokemons
-     * @returns {any}
+     * @returns {Object}
      */
     getLoadedPokemons(){
         return this.#loadedPokemons;
@@ -137,7 +149,7 @@ class PokemonService {
     /**
      * Requests pokemon data to the api and adds to the pokemon
      * @param {BaseDataObj} modelClass - an allowed class to add to the pokemon
-     * @param {string} url - the API endpoint that contains the desired data
+     * @param {String} url - the API endpoint that contains the desired data
      * @param {Pokemon} pokemon the pokemon that will receive the data
      * @returns {Promise<Pokemon>}
      */
@@ -151,9 +163,8 @@ class PokemonService {
             throw e;
         }
         const details = new modelClass(pokemonData);
-        if(!this.pokemonExists(pokemon.getName()))
-            this.#loadedPokemons[pokemon.getName()] = pokemon;
-        const currentPokemon = this.#loadedPokemons[pokemon.getName()];
+        // prioritizes saved pokemon
+        const currentPokemon = this.#loadedPokemons[pokemon.getName()] ?? pokemon;
         currentPokemon.setData(details);
         return currentPokemon;
     }
@@ -165,7 +176,7 @@ class PokemonService {
      */
     async getPokemonDetails(pokemon){
         if(!(pokemon instanceof Pokemon)) throw new TypeError("param [pokemon] is not of type Pokemon!");
-        const url = `${this.#baseUrl}/pokemon/${pokemon.getName()}`;
+        const url = pokemon.getDetailsUrl();
         try {
             return await this.requestPokemonData(PokemonDetails, url, pokemon);
         }catch(e){
@@ -176,20 +187,27 @@ class PokemonService {
     /**
      * Fetches species data about a pokemon
      * @param {Pokemon} pokemon - an valid pokemon
+     * @param {Object} withData - params to instruct the service to load certain Pokémon properties
+     * @param {Boolean} withData.details - load data with pokemon details (images, stats)
+     * @param {Boolean} withData.species - load data with species data (evolution, description)
+     * @param {Boolean} withData.evolutionChain - load data with evolution chain (will set species to `true`)
      * @returns {Promise<Pokemon>}
      */
-    async getPokemonSpecies(pokemon){
+    async getPokemonSpecies(pokemon, withData = {}){
         
+        const { evolutionChain } = withData;
+
         if(!(pokemon instanceof Pokemon)) throw new TypeError("param [pokemon] is not of type Pokemon!");
 
         let name = pokemon.getName(); // assuming the species id is the same as the pokemon name (most of the time it is)
         if(pokemon.hasDetails()) name = pokemon.getSpeciesName(); // if there is details loaded, loads the actual species id
 
         const url = `${this.#baseUrl}/pokemon-species/${name}`;
+
         try {
             // if [name] didn't came from details, there is a chance it might not find the species data and the request will fail
             // with an 404 error
-            return await this.requestPokemonData(PokemonSpecies, url, pokemon);
+            await this.requestPokemonData(PokemonSpecies, url, pokemon);
         }catch(e){
             // tries to recover and filter the pokemon name to try again
             // this method enables both getPokemonSpecies() and getPokemonDetails() to run in parallel
@@ -198,7 +216,7 @@ class PokemonService {
                 const filteredName = name.split("-")[0];
                 const filteredUrl = `${this.#baseUrl}/pokemon-species/${name.split("-")[0]}`;
                 try {
-                    return await this.requestPokemonData(PokemonSpecies, filteredUrl, pokemon);
+                    await this.requestPokemonData(PokemonSpecies, filteredUrl, pokemon);
                 }catch(e){
                     throw new PokemonSpeciesError(`unable to find species data for pokemon [${name}] (forced ${filteredName})`);
                 }
@@ -206,6 +224,65 @@ class PokemonService {
                 throw e;
             }
         }
+
+        if(evolutionChain) await this.getPokemonEvolutionChain(pokemon);
+
+        return pokemon;
+
+    }
+    
+    /**
+     * Loads an pokemon evolution chain
+     * @param {Pokemon} pokemon - pokemon to receive the evolution chain
+     * @returns {Promise<Pokemon>}
+     */
+    async getPokemonEvolutionChain(pokemon){
+
+        if(!(pokemon instanceof Pokemon)) throw new TypeError("param [pokemon] is not of type Pokemon!");
+        if(!pokemon.hasSpecies()) throw PokemonSpeciesError(`pokemon [${pokemon.getName()}] has no species defined!`);
+        
+        const url = pokemon.getSpecies().getEvolutionChainUrl();
+        
+        if(url === "") return pokemon;
+
+        await this.requestPokemonData(PokemonEvolutionChain, url, pokemon);
+        const evolutionChain = pokemon.getEvolutionChain();
+        
+        // iterates on the evolution chain and loads possible unloaded pokemons
+        const promises = [];
+
+        if(!evolutionChain.isSingle()){
+            evolutionChain.linkMap((evolution) => {
+                const oldPokemon = evolution.getPokemon();
+                // TODO: improve how the pokemons are listed so it's not needed to load pokemons without saving,
+                // because if they are saved before being loaded on the list they can appear in the wrong order
+                // as the pagination progresses
+                
+                let name = oldPokemon.getName();
+
+                promises.push(this.getPokemon(name, { details: true }, { save: false })
+                .catch((e) => {
+                    if(e instanceof PokemonDetailsError){
+                        // some of the later pokemons have a lot of incoherences in their names, where kubufu is actually [kubfu] this is a way
+                        // to give the pokemon its already loaded details if applicable
+                        const speciesName = pokemon.getSpeciesName();
+                        console.info(`details for [${name}] in evolution chain not found, therefore had no details to be loaded`);
+                        if(speciesName === name){
+                            evolution.setPokemon( {...pokemon} );
+                        }
+                    }else{
+                        throw e;
+                    }
+                })
+                .then((newPokemon) => {
+                    evolution.setPokemon(newPokemon);
+                }));
+            });
+        }
+
+        await Promise.all(promises);
+
+        return pokemon;
 
     }
 
