@@ -10,7 +10,6 @@ class Main {
         this.pokemonService = new PokemonService();
         this.listTemplate = new PokemonListTemplate();
         this.detailsTemplate = new PokemonDetailsTemplate({ show: false });
-        this.noPokemonLoadedTemplate = new NoPokemonLoadedTemplate();
         this.errorTemplate = new ErrorTemplate();
         this.offset = 0;
         this.firstStep = this.getResolutionStep(window.innerWidth);
