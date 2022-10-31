@@ -8,6 +8,8 @@
 
 Pokédex é um simples aplicativo em javascript que lê e apresenta os dados da [pokeapi](https://pokeapi.co/), para o bootcamp da DIO.
 
+Versão no ar: [https://dsleite.com.br/projects/pokedex](https://dsleite.com.br/projects/pokedex)
+
 ## Características
 
 O projeto original consistia em uma lista da primeira geração de Pokémons com um botão de paginação para carregar mais, este em particular foi feito do zero contendo as seguintes características adicionais:

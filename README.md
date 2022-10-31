@@ -8,6 +8,8 @@
 
 A simple javascript app that reads and presents the data read from the [pokeapi](https://pokeapi.co/) for the DIO bootcamp.
 
+Live version: [https://dsleite.com.br/projects/pokedex](https://dsleite.com.br/projects/pokedex)
+
 ## Features
 
 The original project was a list of the first generation of Pokémons with a pagination button to load more, this one was made from scratch with the following additional features:
