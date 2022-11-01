@@ -79,7 +79,6 @@ class PokemonService {
             if(save) this.#loadedPokemons[pokemon.getName()] = pokemon;
             let promises = [];
             
-            if(details && id == "zygarde-50" || id == "zygarde") debugger;
             if(details) promises.push( this.getPokemonDetails(pokemon) );
             if(species || evolutionChain) promises.push( this.getPokemonSpecies(pokemon, withData) );
             
